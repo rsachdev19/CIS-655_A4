@@ -89,14 +89,18 @@ static unsigned int max_insts;
 /* level 1 instruction cache, entry level instruction cache */
 static struct cache_t *cache_il1 = NULL;
 
-/* level 1 instruction cache */
+/* level 2 instruction cache */
 static struct cache_t *cache_il2 = NULL;
+
+static struct cache_t *cache_il3 = NULL;
 
 /* level 1 data cache, entry level data cache */
 static struct cache_t *cache_dl1 = NULL;
 
 /* level 2 data cache */
 static struct cache_t *cache_dl2 = NULL;
+
+static struct cache_t *cache_dl3 = NULL;
 
 /* instruction TLB */
 static struct cache_t *itlb = NULL;
@@ -149,6 +153,27 @@ dl2_access_fn(enum mem_cmd cmd,		/* access cmd, Read or Write */
 	      struct cache_blk_t *blk,	/* ptr to block in upper level */
 	      tick_t now)		/* time of access */
 {
+  if (cache_dl3)
+    {
+      /* access next level of data cache hierarchy */
+      return cache_access(cache_dl3, cmd, baddr, NULL, bsize,
+			  /* now */now, /* pudata */NULL, /* repl addr */NULL);
+    }
+  else
+    {
+      /* access main memory, which is always done in the main simulator loop */
+      return /* access latency, ignored */1;
+    }
+}
+
+/* l3 data cache block miss handler function */
+static unsigned int			/* latency of block access */
+dl3_access_fn(enum mem_cmd cmd,		/* access cmd, Read or Write */
+	      md_addr_t baddr,		/* block address to access */
+	      int bsize,		/* size of block to access */
+	      struct cache_blk_t *blk,	/* ptr to block in upper level */
+	      tick_t now)		/* time of access */
+{
   /* this is a miss to the lowest level, so access main memory, which is
      always done in the main simulator loop */
   return /* access latency, ignored */1;
@@ -178,6 +203,27 @@ il1_access_fn(enum mem_cmd cmd,		/* access cmd, Read or Write */
 /* l2 inst cache block miss handler function */
 static unsigned int			/* latency of block access */
 il2_access_fn(enum mem_cmd cmd,		/* access cmd, Read or Write */
+	      md_addr_t baddr,		/* block address to access */
+	      int bsize,		/* size of block to access */
+	      struct cache_blk_t *blk,	/* ptr to block in upper level */
+	      tick_t now)		/* time of access */
+{
+  if (cache_il3)
+    {
+      /* access next level of inst cache hierarchy */
+      return cache_access(cache_il3, cmd, baddr, NULL, bsize,
+			  /* now */now, /* pudata */NULL, /* repl addr */NULL);
+    }
+  else
+    {
+      /* access main memory, which is always done in the main simulator loop */
+      return /* access latency, ignored */1;
+    }
+}
+
+/* l3 inst cache block miss handler function */
+static unsigned int			/* latency of block access */
+il3_access_fn(enum mem_cmd cmd,		/* access cmd, Read or Write */
 	      md_addr_t baddr,		/* block address to access */
 	      int bsize,		/* size of block to access */
 	      struct cache_blk_t *blk,	/* ptr to block in upper level */
