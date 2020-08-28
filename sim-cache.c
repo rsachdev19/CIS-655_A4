@@ -275,8 +275,10 @@ dtlb_access_fn(enum mem_cmd cmd,	/* access cmd, Read or Write */
 /* cache/TLB options */
 static char *cache_dl1_opt /* = "none" */;
 static char *cache_dl2_opt /* = "none" */;
+static char *cache_dl3_opt /* = "none" */;
 static char *cache_il1_opt /* = "none" */;
 static char *cache_il2_opt /* = "none" */;
+static char *cache_il3_opt /* = "none" */;
 static char *itlb_opt /* = "none" */;
 static char *dtlb_opt /* = "none" */;
 static int flush_on_syscalls /* = FALSE */;
@@ -334,6 +336,9 @@ sim_reg_options(struct opt_odb_t *odb)	/* options database */
   opt_reg_string(odb, "-cache:dl2",
 		 "l2 data cache config, i.e., {<config>|none}",
 		 &cache_dl2_opt, "ul2:1024:64:4:l", /* print */TRUE, NULL);
+  opt_reg_string(odb, "-cache:dl3",
+      "l3 data cache config, i.e., {<config>|none}",
+      &cache_dl2_opt, "ul2:1024:64:4:1", /* print */TRUE, NULL);
   opt_reg_string(odb, "-cache:il1",
 		 "l1 inst cache config, i.e., {<config>|dl1|dl2|none}",
 		 &cache_il1_opt, "il1:256:32:1:l", /* print */TRUE, NULL);
@@ -341,6 +346,10 @@ sim_reg_options(struct opt_odb_t *odb)	/* options database */
 "  Cache levels can be unified by pointing a level of the instruction cache\n"
 "  hierarchy at the data cache hiearchy using the \"dl1\" and \"dl2\" cache\n"
 "  configuration arguments.  Most sensible combinations are supported, e.g.,\n"
+"\n"
+"    A unified l3 cache (il3 is pointed at dl3):\n"
+"      -cache:il1 il1:128:64:1:l -cache:il2 il2:128:64:1:l -cache:il3 dl3\n"
+"      -cache:dl1 dl1:256:32:1:l -cache:dl2 ul2:1024:64:2:l -cache:il3 il3:128:64:1:l\n"
 "\n"
 "    A unified l2 cache (il2 is pointed at dl2):\n"
 "      -cache:il1 il1:128:64:1:l -cache:il2 dl2\n"
@@ -353,6 +362,9 @@ sim_reg_options(struct opt_odb_t *odb)	/* options database */
   opt_reg_string(odb, "-cache:il2",
 		 "l2 instruction cache config, i.e., {<config>|dl2|none}",
 		 &cache_il2_opt, "dl2", /* print */TRUE, NULL);
+  opt_reg_string(odb, "-cache:il3",
+      "l3 instruction cache config, i.e., {<config>|dl3|none}",
+     &cache_il2_opt, "dl3", /* print */TRUE, NULL);
   opt_reg_string(odb, "-tlb:itlb",
 		 "instruction TLB config, i.e., {<config>|none}",
 		 &itlb_opt, "itlb:16:4096:4:l", /* print */TRUE, NULL);
@@ -412,8 +424,22 @@ sim_check_options(struct opt_odb_t *odb,	/* options database */
 	  cache_dl2 = cache_create(name, nsets, bsize, /* balloc */FALSE,
 				   /* usize */0, assoc, cache_char2policy(c),
 				   dl2_access_fn, /* hit latency */1);
-	}
+
+        /* is the level 3 D-cache defined? */
+        if (!mystricmp(cache_il3_opt, "none"))
+    cache_il3 = NULL;
+        else if (!mystricmp)
+    {
+      if (sscanf(cache_dl3_opt, "%[^:]:%d:%d:%d:%c",
+          name, &nsets, &bsize, &assoc, &c) != 5)
+        fatal("bad l3 D-cache parms: " 
+        "<name>:<nsets>:<bsize>:<assoc>:<repl>");
+      cache_dl3 = cache_create(name, nsets, bsize, /* balloc */FALSE,
+            /* usize */0, assoc, cache_char2policy(c)),
+            dl3_access_fn, /* hit latency */1);
     }
+	}
+    } /* is dl1 defined */
 
   /* use a level 1 I-cache? */
   if (!mystricmp(cache_il1_opt, "none"))
@@ -474,6 +500,7 @@ sim_check_options(struct opt_odb_t *odb,	/* options database */
 	  cache_il2 = cache_create(name, nsets, bsize, /* balloc */FALSE,
 				   /* usize */0, assoc, cache_char2policy(c),
 				   il2_access_fn, /* hit latency */1);
+           //TODO: Configure level 3 instruction cache
 	}
     }
 
