@@ -501,6 +501,25 @@ sim_check_options(struct opt_odb_t *odb,	/* options database */
 				   /* usize */0, assoc, cache_char2policy(c),
 				   il2_access_fn, /* hit latency */1);
            //TODO: Configure level 3 instruction cache
+    
+    if (!mystricmp(cache_il3_opt, "none"))
+      cache_il3 = NULL;
+    else if (!mystricmp(cache_il3_opt, "dl3"))
+    {
+      if (!cache_dl3)
+        fatal("I-cache l3 cannot access D-cache l3 as it's undefined");
+      cache_il3 = cache_dl3;
+    }
+    else
+    {
+      if (sscanf(cache_il3_opt, "%[^:]:%d:%d:%d:%c",
+          name, &nsets, &bsize, &assoc, &c) != 5)
+        fatal("bad l3 I-cache parms: "
+        "<name>:<nsets>:<bsize>:<assoc>:<reply>");
+      cache_il3 = cache_create(name, nsets, bsize, /* balloc */FALSE,
+            /* usize */0, assoc, cache_char2policy(c),
+            il3_access_fn, /* hit latency */1);
+    }
 	}
     }
 
@@ -606,12 +625,17 @@ sim_reg_stats(struct stat_sdb_t *sdb)	/* stats database */
       && (cache_il1 != cache_dl1 && cache_il1 != cache_dl2))
     cache_reg_stats(cache_il1, sdb);
   if (cache_il2
-      && (cache_il2 != cache_dl1 && cache_il2 != cache_dl2))
+      && (cache_il2 != cache_dl1 && cache_il2 != cache_dl2 && cache_il3 != cache_dl3))
     cache_reg_stats(cache_il2, sdb);
+  if (cache_il3
+      && (cache_il3 != cache_dl3))
+    cache_reg_stats(cache_il3, sdb);
   if (cache_dl1)
     cache_reg_stats(cache_dl1, sdb);
   if (cache_dl2)
     cache_reg_stats(cache_dl2, sdb);
+  if (cache_dl3)
+    cache_reg_stats(cache_dl3, sdb);
   if (itlb)
     cache_reg_stats(itlb, sdb);
   if (dtlb)
@@ -791,6 +815,7 @@ dcache_access_fn(struct mem_t *mem,	/* memory space to access */
    ? ((dtlb ? cache_flush(dtlb, 0) : 0),				\
       (cache_dl1 ? cache_flush(cache_dl1, 0) : 0),			\
       (cache_dl2 ? cache_flush(cache_dl2, 0) : 0),			\
+      (cache_dl3 ? cache_flush(cache_dl3, 0) : 0),      \
       sys_syscall(&regs, mem_access, mem, INST, TRUE))			\
    : sys_syscall(&regs, dcache_access_fn, mem, INST, TRUE))
 
